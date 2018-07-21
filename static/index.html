@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <title>Login Page</title>
+
+        <link href="css/bootstrap.min.css" rel="stylesheet">
+        <style type="text/css">
+            #wrapper{
+                margin-top: 30px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="wrapper">
+            <div class="container">
+                <div v-show="page == 'dashboard'">
+                    <h4>{{session.message}}</h4>
+                </div>
+                <div v-show="page == 'login'" class="col-md-4">
+                    <div v-show="error.display" class="alert alert-danger">
+                        {{error.message}}
+                    </div>
+                    <h3>Login</h3>
+                    <form v-on:submit="login()" action="javascript:;" method="POST">
+                        <p>
+                            <label>Username</label>
+                            <input type="text" class="form-control" v-model="form.username">
+                        </p>
+                        <p>
+                            <label>Password</label>
+                            <input type="password" class="form-control" v-model="form.password">
+                        </p>
+                        <p>
+                            <button class="btn btn-primary" type="submit">Login</button>
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.5.16/vue.min.js"></script>
+        <script type="text/javascript">
+            var app = new Vue({
+                el : '#wrapper',
+                data : {
+                    form : {
+                        username : '',
+                        password : ''
+                    },
+                    config : {
+                        url : 'http://localhost:8086'
+                    },
+                    session : {
+                        token : '',
+                        message : ''
+                    },
+                    error : {
+                        display : false,
+                        message : '',
+                        codes : {
+                            401 : 'Unauthorized'
+                        }
+                    },
+                    page : 'login'
+                },
+                methods : {
+                    service : function(request, data, callback, method){
+                        $.ajax({
+                            url    : this.config.url + '/' + request,
+                            method : method ? method : 'POST',
+                            data   : data,
+                            beforeSend: function(xhr) {
+                                if (app.session.token) {
+                                    xhr.setRequestHeader('Authorization', 'Bearer ' + app.session.token);
+                                }
+                            }
+                        }).always(callback);
+                    },
+                    login : function(){
+                        this.service('login', {
+                            username : this.form.username,
+                            password : this.form.password
+                        }, function(data){
+                            if(data.status == 401){
+                                app.showError(app.error.codes[401]);
+                            }else if(data.token){
+                                app.session.token = data.token;
+                                app.getSession();
+                            }
+                        });
+                    },
+                    getSession : function(){
+                        this.service('restricted', { 
+                            token : this.session.token 
+                        }, function(data){
+                            app.session.message = data;
+                            app.page = 'dashboard';
+                        }, 'GET');
+                    },
+                    showError : function(message){
+                        this.error.display = true;
+                        this.error.message = message;
+
+                        setTimeout(function(self){
+                            self.error.display = false;
+                        }, 2000, this);
+                    }
+                }
+            });
+        </script>
+    </body>
+</html>
